@@ -1,6 +1,13 @@
 # This is a basic workflow to help you get started with Actions
 
 name: CI
+uses: 1Password/load-secrets-action@v5
+with:
+   export-env: true
+ env:
+   OP_WORKLOAD_ID: "YG2JPAFZQNAQFCN4NF4RMO4ZQY"
+   OP_ENVIRONMENT_ID: "mtxmra332m5hvv2iog67y5ccaq"
+   OP_INTEGRATION_KEY: ${{ secrets.OP_INTEGRATION_KEY }}
 
 # Controls when the workflow will run
 on:
