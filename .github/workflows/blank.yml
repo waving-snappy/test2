@@ -1,43 +1,44 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
-uses: 1Password/load-secrets-action@v5
-with:
-   export-env: true
-env:
-   OP_WORKLOAD_ID: "YG2JPAFZQNAQFCN4NF4RMO4ZQY"
-   OP_ENVIRONMENT_ID: "mtxmra332m5hvv2iog67y5ccaq"
-   OP_INTEGRATION_KEY: ${{ secrets.OP_INTEGRATION_KEY }}
+name: Test 1Password OIDC Integration
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  test-secrets:
     runs-on: ubuntu-latest
+    environment: test
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub to issue the OIDC token
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Inspect OIDC Token Claims
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          ACTIONS_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://1password.com" | jq -r '.value')
+          
+          # Extract and decode the JWT payload
+          echo "$ACTIONS_TOKEN" | cut -d'.' -f2 | base64 --decode | jq .
+
+      - name: Load secrets from 1Password
+        uses: 1password/load-secrets-action@v5
+        with:
+          export-env: true
+        env:
+          OP_WORKLOAD_ID: "YG2JPAFZQNAQFCN4NF4RMO4ZQY"
+          OP_ENVIRONMENT_ID: "mtxmra332m5hvv2iog67y5ccaq"
+          OP_INTEGRATION_KEY: ${{ secrets.OP_INTEGRATION_KEY }}
+
+      - name: Verify Environment Variable
+        run: |
+          if [ -n "$MY_VAR" ]; then
+            echo "MY_VAR was loaded successfully from 1Password Environment."
+          else
+            echo "MY_VAR is empty or missing."
+            exit 1
+          fi
